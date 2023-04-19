@@ -1,0 +1,78 @@
+#!/bin/bash
+
+## auto-venv
+#
+# Caveats; doesn't support the workflow of having .venv/ in your project
+# directory
+
+# Move up from $PWD to find pyvenv.cfg
+_venv_find() {
+	local _cwd=$PWD
+	local real
+	while :; do
+		if ! real=$(realpath "$_cwd" 2>/dev/null); then
+			break
+		fi
+		if [[ -e $real/pyvenv.cfg ]]; then
+			if [[ -e $real/bin/activate ]]; then
+				echo "$real"
+				return 0
+			fi
+		fi
+		if [[ $real == / ]]; then
+			break
+		fi
+		_cwd+=/..
+	done
+	return 1
+}
+
+# Maintain a list of directories that have been exited via 'deactivate' to
+# avoid activating the virtualenv again
+_venv_enter_ignore=()
+
+_venv_enter() {
+	local _venv
+	local _deactivated
+	if [[ $VIRTUAL_ENV ]]; then
+		return
+	fi
+
+	## python virtualenv autoenabler
+	if _venv=$(_venv_find); then
+		for _deactivated in "${_venv_enter_ignore[@]}"; do
+			if [[ $(realpath "$_deactivated") == "$_venv" ]]; then
+				echo ">> (ignored) $_venv/bin/activate" >&2
+				return
+			fi
+		done
+		echo ">> auto-enabled $_venv/bin/activate" >&2
+		# shellcheck disable=SC1090
+		source "$_venv/bin/activate"
+
+		# Scary way of patching their deactivate function
+		eval "$(echo "_venv_deactivate()"; declare -f deactivate | tail -n +2)"
+		deactivate() {
+			_venv_enter_ignore+=("$VIRTUAL_ENV")
+			_venv_deactivate "$@"
+		}
+	fi
+}
+PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+
+## fzf venv jump: List all virtualenvs
+__venvs() {
+	locate -b activate_this.py | sed \
+		-e '/\/bin\/activate_this.py/!d' \
+		-e s,/bin/activate_this.py,,
+}
+
+__fzf_venv_jump__() {
+	printf 'cd %q' \
+		"$(__venvs | fzf --height 40% --inline-info --no-sort --reverse)"
+}
+
+{
+	# shellcheck disable=2016
+	bind '"\C-g\C-v": " \C-b\C-k \C-u$(__fzf_venv_jump__)\e\C-e\er\C-m\C-y\C-h\e \C-y\ey\C-x\C-x\C-d"';
+}
