@@ -58,7 +58,10 @@ _venv_enter() {
 		}
 	fi
 }
-PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+
+if [[ ${PROMPT_COMMAND[*]} != *_venv_enter* ]]; then
+	PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+fi
 
 ## fzf venv jump: List all virtualenvs
 __venvs() {
