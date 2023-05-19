@@ -60,7 +60,11 @@ _venv_enter() {
 }
 
 if [[ ${PROMPT_COMMAND[*]} != *_venv_enter* ]]; then
-	PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+	if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == "declare --"* ]]; then
+		PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+	else
+		PROMPT_COMMAND+=(_venv_enter)
+	fi
 fi
 
 ## fzf venv jump: List all virtualenvs
