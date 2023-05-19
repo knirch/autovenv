@@ -58,7 +58,11 @@ _venv_enter() {
 		}
 	fi
 }
-PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+if [[ $(declare -p PROMPT_COMMAND) == "declare -a"* ]]; then
+	PROMPT_COMMAND+=(_venv_enter)
+else
+	PROMPT_COMMAND="_venv_enter${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+fi
 
 ## fzf venv jump: List all virtualenvs
 __venvs() {
